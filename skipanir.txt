@@ -1,0 +1,179 @@
+/*Home skipunin*/
+SELECT post.ID, post.content, post.user_ID, post.time
+FROM post
+INNER JOIN user ON post.user_ID = user.ID
+INNER JOIN friend_request ON user.ID = friend_request.sender_ID
+WHERE friend_request.sender_ID = 1446550437
+OR friend_request.receiver_ID = 1446550437
+AND friend_request.confirmed = 1 
+
+--home skipun vol 2
+SELECT post.content, post.time FROM post
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--Hópa skipanir byrja
+	/*Sjá hópa sem þú ert í*/
+	SELECT hopar.name FROM hopar
+	JOIN user ON hopar.host_ID = user.ID
+	JOIN hopar_join ON user.ID = hopar_join.user_ID
+	WHERE hopar.host_ID = $session OR hopar_join.user_ID = $session AND stada = 2
+
+	/*Sjá alla posta í hóp*/
+	SELECT post.user_ID, post.content FROM post
+	JOIN user ON post.user_ID = user.ID
+	JOIN hopar ON user.ID = hopar.host_ID
+	WHERE hopar.ID = $active_group
+	--skrifa post inní hóp
+	--bæta notanda í hóp
+	--eyða notanda úr hóp
+
+	--
+--Hópa skipanir enda
+
+--chat skipanir byrja
+	--Sjá sendanda skilaboða og skilaboð í chatti $activechat
+	SELECT message.content, message.sender_ID FROM chat
+	JOIN user ON message.user_ID = user.ID
+	JOIN chat ON message.chat_ID = chat.ID
+	WHERE chat.ID = $activechat
+
+	--Senda skilaboð í chat
+	INSERT INTO `message`(`chat_ID`, `user_ID`, `content`, `send_time`, `seen`) VALUES ($activechat ,$session ,'$input',GETDATE(),0);
+
+	/*notandi velur að sjá öll chöt sem hann er meðlimur í*/
+	SELECT chat.ID FROM chat
+	JOIN chat_add ON chat.ID = chat_add.chat_ID
+	WHERE chat.ID = $session OR chat_add.user_ID = $session
+
+	/*Bæta meðlim í chat*/
+	INSERT INTO `chat_add`(`chat_ID`, `user_ID`) VALUES ($active_chat, /*Notandi verður að velja user úr search dæminu*/);
+
+	/*Renamea chat*/
+	UPDATE `chat` SET `name`= $name_in,`img`= $new_img WHERE chat.ID = $active_chat
+
+	/*Sjá meðlimi í chatti*/
+	SELECT user.image, user.name FROM user
+	JOIN chat ON user.ID = chat.host_ID
+	JOIN chat_add ON user.ID =chat_add.user_ID
+	WHERE chat.ID = $active_chat
+
+--chat skipanir enda
+
+--Event skipanir byrja
+	--Halda viðburð
+	INSERT INTO `event`(`host_ID`, `name`, `description`, `time_from`, `time_to`, `location`) 
+	VALUES ($session,'$name','$description','$startTime','$endTime','$location')--staðsetning er nafnið á staðnum eða gps hnit(notandi velur í google maps) ef við höfum tíma til að bæta því við
+	--posta inní viðburð
+		--Type
+			--plain Text
+			INSERT INTO `post`(`user_ID`, `content`, `in_group`, `in_event`, `event_ID`, `to_friend`, `type`, `time`) 
+			VALUES ($session,'$textboxInput',0,1,$valinEvent,0,1,GETDATE());
+			--Mynd
+			INSERT INTO `post`(`user_ID`, `content`, `in_group`, `in_event`, `event_ID`, `to_friend`, `type`, `time`, `content_SRC`) 
+			VALUES ($session,'$textboxInput',0,1,$valinEvent,0,2,GETDATE(),'$content');
+			--Myndband
+			INSERT INTO `post`(`user_ID`, `content`, `in_group`, `in_event`, `event_ID`, `to_friend`, `type`, `time`, `content_SRC`) 
+			VALUES ($session,'$textboxInput',0,1,$valinEvent,0,3,GETDATE(),'$content');
+			--Hljóðskrá
+			INSERT INTO `post`(`user_ID`, `content`, `in_group`, `in_event`, `event_ID`, `to_friend`, `type`, `time`, `content_SRC`) 
+			VALUES ($session,'$textboxInput',0,1,$valinEvent,0,4,GETDATE(),'$content');
+	--Eyða viðburð bara hægt með viðburði þar sem notandi er host
+	DELETE FROM `event` WHERE ID = $valid_ID --Valið úr viðburðum sem notandi er að halda
+	--Breyta viðburð
+	UPDATE `event` SET `name`='$newName',`description`='$newdescription',`time_from`='$newStartDate',`time_to`='$newEndDate',`location`='$newLocation' WHERE ID = $selected --Aðeins hægt þar sem notandi er host
+	--Invitea manneskju
+	INSERT INTO `event_invite`(`event_ID`, `sender_ID`, `receiver_ID`) VALUES ('$selectedEvent', '$session', '$selectedUser');
+		--manneskja sem var inviteað samþykkir inviteið
+			--Going
+			UPDATE `event_invite` SET `status`= 1 WHERE receiver_ID = $session
+			--maybe
+			UPDATE `event_invite` SET `status`=2 WHERE receiver_ID = $session
+			--not going
+			UPDATE `event_invite` SET `status`=3 WHERE receiver_ID = $session
+	--Gera manneskju að admin bara host sem getur gert þetta?
+	UPDATE `event_invite` SET `status`= 4 WHERE receiver_ID = $session
+	--Kicka manneskju
+	DELETE FROM `event_invite` WHERE $selectedUser
+	--gera event private
+	UPDATE `event` SET `private`=1 WHERE ID = $selectedEvent;
+	--gera event public
+	UPDATE `event` SET `private`=0 WHERE ID = $selectedEvent;
+--Event skipanir enda
+
+--Post skipanir byrja
+	--skrifa post á þinn profile, ekkert event, ekkert group. Ekkert kjaftæði
+		--Typa:
+			--Plain Text
+				INSERT INTO `post`( `user_ID`, `content`, `in_group` `in_event`, `to_friend`, `type`, `time`) 
+				VALUES ($session,'$textboxInput',0,0,0,1,GETDATE());
+			--img
+				INSERT INTO `post`( `user_ID`, `content`, `in_group` `in_event`, `to_friend`, `type`, `time`, `content_SRC`) 
+				VALUES ($session,'$textboxInput',0,0,0,2,GETDATE(), '$content_SRC');
+			--video
+				INSERT INTO `post`( `user_ID`, `content`, `in_group` `in_event`, `to_friend`, `type`, `time`, `content_SRC`) 
+				VALUES ($session,'$textboxInput',0,0,0,3,GETDATE(), '$content_SRC');
+			--audio
+				INSERT INTO `post`( `user_ID`, `content`, `in_group` `in_event`, `to_friend`, `type`, `time`, `content_SRC`) 
+				VALUES ($session,'$textboxInput',0,0,0,4,GETDATE(), '$content_SRC');
+	--breyta post
+		--Type:
+			--Plain Text
+			UPDATE `post` SET `content`='$newContent' WHERE ID = $selectedPost
+			--other
+			UPDATE `post` SET `content`='$newContent', `content_SRC` = '$newContent' WHERE ID = $selectedPost
+	--eyða post
+		DELETE FROM `post` WHERE ID = $selectedPost
+	--like
+	INSERT INTO `post_like`(`post_ID`, `user_ID`) VALUES ($getPostID,$session);
+	--comment
+	INSERT INTO `comment`(`post_ID`, `user_ID`, `time`, `content`) VALUES ($getPostID,$session,GETDATE(),'$textboxInput');
+	--like á comment
+	INSERT INTO `comment_like`(`comment_ID`, `user_ID`) VALUES ($getCommentID,$session);
+--Post skipanir enda
+
+--Sjá alla vini
+
+--Vinabeðnir byrja
+	--Adda vin
+	INSERT INTO `friend_request`(`sender_ID`, `receiver_ID`, `message`) VALUES ($session,$otheruser,$message)
+	--Sjá allar vinabeðnir
+	SELECT * FROM friend_request WHERE receiver_ID = $session AND confirmed = 0;
+	--samþykkja vinabeðni
+	UPDATE `friend_request` SET `confirmed`=1 WHERE ID = $requestID;
+	--Ekki samþykkja
+	DELETE FROM `friend_request` WHERE ID = $getRequestID;
+	--Eyða vin
+	DELETE FROM `friend_request` WHERE ID = $getRequestID;
+	--reporta(þarf aðeins að bæta við fyrir þetta)
+--Vinabeðnir enda
+--Sjá alla vini hjá notanda
+SELECT user.name FROM user
+JOIN friend_request ON user.ID = friend_request.receiver_ID
+WHERE friend_request.receiver_ID = $session OR friend_request.sender_ID = $session
+AND confirmed = 1
+/*
+Vantar
+SELECT fyrir sjá alla vini
+*/
+--Þarf að bæta við db
+	--admin í hóp DONE
+	--Post type DONE
+	--public/private event DONE
+	--Hafa marga hosta fyrir viðburð DONE
+	--report
+		--Gera það á profile. Hasha reporter ID
+			INSERT INTO `report`(`reporter_ID`, `reported_ID`) VALUES (MD5('"$session"'),$profile);
